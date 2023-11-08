@@ -6,8 +6,7 @@ const int stepsPerRevolution = 200;  // change this to fit the number of steps p
 // initialize the stepper library on pins 8 through 11:
 Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11);
 
-String clockwise = "horario";
-String counterclockwise = "anti";
+int limit = 6;
 
 void setup() {
   // set the speed at 60 rpm:
@@ -16,19 +15,34 @@ void setup() {
   Serial.begin(9600);
 }
 
+void distribui(int players) {
+  for (int i = 0; i < players; i++) {
+    myStepper.step(stepsPerRevolution);
+    delay(500);
+  }
+}
+
 void loop() {
   if (Serial.available() > 0) {
-    String command = Serial.readStringUntil('\n');
-    command.trim();
-    Serial.println("Comando recebido: " + command);
+    String text = Serial.readStringUntil('\n');
+    text.trim();
+    Serial.println("Jogadores: " + text);
+    int players = text.toInt();
 
-    if (command == clockwise) {
-      myStepper.step(stepsPerRevolution);
-    } else if (command == counterclockwise) {
-      myStepper.step(-stepsPerRevolution);
+    if (players > limit) {
+      Serial.println("Qtd de jogadores maior que " + String(limit));
+    } else {
+      distribui(players);
     }
+
+    // if (command == clockwise) {
+    //   myStepper.step(stepsPerRevolution);
+    // } else if (command == counterclockwise) {
+    //   myStepper.step(-stepsPerRevolution);
+    // }
   }
 
   // delay(500);
+  delay(500);
 }
 
