@@ -7,6 +7,7 @@ const int stepsPerRevolution = 200;  // change this to fit the number of steps p
 Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11);
 
 int limit = 6;
+int qtd_cartas = 3;
 
 void setup() {
   // set the speed at 60 rpm:
@@ -15,9 +16,22 @@ void setup() {
   Serial.begin(9600);
 }
 
-void distribui(int players) {
-  for (int i = 0; i < players; i++) {
-    myStepper.step(stepsPerRevolution);
+void distribui(int players, int qtd_cartas) {
+  if (players > limit) {
+    Serial.println("Qtd de jogadores maior que " + String(limit));
+  }
+
+  // TODO: go to zero position
+
+  int totalRevolutionSteps = stepsPerRevolution * players;
+
+  for (int j = 0; j < qtd_cartas; j ++) {
+    for (int i = 0; i < players; i++) {
+      myStepper.step(stepsPerRevolution);
+      delay(500);
+    }
+    // go back to zero position
+    myStepper.step(-totalRevolutionSteps);
     delay(500);
   }
 }
@@ -29,20 +43,8 @@ void loop() {
     Serial.println("Jogadores: " + text);
     int players = text.toInt();
 
-    if (players > limit) {
-      Serial.println("Qtd de jogadores maior que " + String(limit));
-    } else {
-      distribui(players);
-    }
-
-    // if (command == clockwise) {
-    //   myStepper.step(stepsPerRevolution);
-    // } else if (command == counterclockwise) {
-    //   myStepper.step(-stepsPerRevolution);
-    // }
+    distribui(players, qtd_cartas);
   }
-
-  // delay(500);
   delay(500);
 }
 
