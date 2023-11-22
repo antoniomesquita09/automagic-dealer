@@ -16,7 +16,7 @@ void setup() {
   Serial.begin(9600);
 }
 
-void distribui(int players, int qtd_cartas) {
+void distribui(int players, int totalCards) {
   if (players > limit) {
     Serial.println("Qtd de jogadores maior que " + String(limit));
   }
@@ -24,6 +24,7 @@ void distribui(int players, int qtd_cartas) {
   // TODO: go to zero position
 
   int totalRevolutionSteps = stepsPerRevolution * players;
+  int initialTotalPlayers = players;
 
   for (int j = 0; j < qtd_cartas; j ++) {
     for (int i = 0; i < players; i++) {
@@ -31,7 +32,8 @@ void distribui(int players, int qtd_cartas) {
       delay(500);
     }
     // go back to zero position
-    myStepper.step(-totalRevolutionSteps);
+    myStepper.step(-totalRevolutionSteps + stepsPerRevolution);
+    players = initialTotalPlayers - 1;
     delay(500);
   }
 }
@@ -47,4 +49,3 @@ void loop() {
   }
   delay(500);
 }
-
