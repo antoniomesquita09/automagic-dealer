@@ -15,7 +15,10 @@ serial_port = 'dev/ttyACM0' # Substitua pelo seu dispositivo serial
 baud_rate = 9600  # Mesma taxa de baud do código Arduino
 
 def fetch_data():
-    client = MongoClient(uri, server_api=ServerApi('1'))
+    client = MongoClient(uri,
+                     server_api=ServerApi('1'),
+                     tls=ssl_support.HAVE_SSL,
+                     tlsAllowInvalidCertificates=True)
     try:
         client.admin.command('ping')
         print("Pinged your deployment. You successfully connected to MongoDB!")
