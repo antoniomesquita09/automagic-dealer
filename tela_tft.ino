@@ -2,98 +2,140 @@
 #include <MCUFRIEND_kbv.h>
 #include <TouchScreen.h>
 #include <JKSButton.h>
+#include <EEPROM.h>
+#include <LinkedList.h>
+
+struct Game {
+ short max_players;
+ short min_players;
+ char name[20];
+};
+
+LinkedList<Game> game_list;
 
 MCUFRIEND_kbv tela;
 TouchScreen touch(6, A1, A2, 7, 300);
 
-// button_[page]_[index]
-JKSButton button_1_1, button_1_2, button_1_3; // buttons from first page
-JKSButton button_2_1, button_2_2, button_2_3; // buttons from second page
-JKSButton button_3_1, button_3_2, button_3_3; // buttons from second page
+JKSButton next_button, detail_button, back_button;
 
-int screen_state = 1;
+int screen_index = 0;
+short total_items;
+bool detail_page = false;
 
 void clean() {
   tela.fillScreen(TFT_BLACK);
 }
 
-void setup_screen_one() {
+void setup_game_screen() {
   clean();
+
+  detail_page = false;
 
   tela.setCursor(10, 10);
-  tela.setTextColor(TFT_DARKGREY);
+  tela.setTextColor(TFT_WHITE);
   tela.setTextSize(4);
-  tela.print("Escolha o game");
-  
-  // go back button
-  button_1_1.init(&tela, &touch, 120, 170, 200, 100, TFT_WHITE, TFT_PURPLE, TFT_BLACK, "Poker", 2);
-  button_1_1.setPressHandler(backward_page);
+  tela.print("DEALER");
+
+  Game cur_game = game_list.get(screen_index);
+
+  // game click button
+  detail_button.init(&tela, &touch, 120, 130, 200, 100, TFT_WHITE, TFT_GREEN, TFT_BLACK, cur_game.name, 2);
+  detail_button.setPressHandler(setup_detail_screen);
   
   // go foward button
-  button_1_2.init(&tela, &touch, 120, 170, 200, 100, TFT_WHITE, TFT_PURPLE, TFT_BLACK, "Poker", 2);
-  button_1_2.setPressHandler(forward_page);
+  next_button.init(&tela, &touch, 120, 250, 200, 100, TFT_WHITE, TFT_BLUE, TFT_WHITE, "Proximo", 2);
+  next_button.setPressHandler(next_game_screen);
 }
 
-void setup_screen_two() {
+void setup_detail_screen(JKSButton &botaoPressionado) {
   clean();
-  
-  // go back button
-  button_2_1.init(&tela, &touch, 120, 170, 200, 100, TFT_WHITE, TFT_PURPLE, TFT_BLACK, "Voltar", 2);
-  button_2_1.setPressHandler(backward_page);
+
+  detail_page = true;
+
+  Game cur_game = game_list.get(screen_index);
+
+  tela.setCursor(10, 10);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(4);
+  tela.print(cur_game.name);
 
   // go foward button
-  button_2_2.init(&tela, &touch, 120, 170, 200, 100, TFT_WHITE, TFT_PURPLE, TFT_BLACK, "Próxima", 2);
-  button_2_2.setPressHandler(forward_page);
+  back_button.init(&tela, &touch, 120, 250, 200, 100, TFT_WHITE, TFT_RED, TFT_WHITE, "Voltar", 2);
+  back_button.setPressHandler(setup_game_screen);
 }
 
-void setup_screen_three() {
-  clean();
+void next_game_screen() {
+  if (screen_index == total_items - 1) {
+    screen_index = 0;
+  } else {
+    screen_index++;
+  }
+  setup_game_screen();
+}
 
-  // go back button
-  button_3_1.init(&tela, &touch, 120, 170, 200, 100, TFT_WHITE, TFT_PURPLE, TFT_BLACK, "Voltar", 2);
-  button_3_1.setPressHandler(backward_page);
+void seed_eeprom() {
+  Game game1, game2, game3;
+
+  game1.min_players = 4;
+  game1.max_players = 4;
+  strcpy(game1.name, "truco");
+
+  game2.min_players = 2;
+  game2.max_players = 6;
+  strcpy(game2.name, "buraco");
+
+  game3.min_players = 2;
+  game3.max_players = 8;
+  strcpy(game3.name, "poker");
+
+  LinkedList<Game> game_list_seed;
+
+  game_list_seed.add(game1);
+  game_list_seed.add(game2);
+  game_list_seed.add(game3);
+
+  short total_seed_items = game_list_seed.size();
+
+  // Write to EEPROM
+  EEPROM.put(0, total_items);
+
+  for(int i = 0; i < total_items; i++) {
+    EEPROM.put(sizeof(total_seed_items) + (sizeof(Game) * i), game_list_seed.get(i));
+  }
 }
 
 void setup() {
+  Serial.begin(9600);
+
+  // Uncomment bellow to seed eeprom (udate seed_eeprom func with your custom games)
+  // seed_eeprom();
+
+  // Read from EEPROM
+  EEPROM.get(0, total_items);
+  Serial.println("eeprom total items response:");
+  Serial.println(total_items);
+
+  for(int j = 0; j < total_items; j++) {
+    Game tmp_game;
+    EEPROM.get(sizeof(total_items) + (sizeof(Game) * j), tmp_game);
+    game_list.add(tmp_game);
+  }
+
+  for(int k = 0; k < game_list.size(); k++) {
+    game_list.get(k);
+  }
+
   tela.begin(tela.readID());
-  setup_screen_one();
+  setup_game_screen();
 }
+
 
 void loop() {
-  if (screen_state == 1) { // first screen
-    button_1_1.process();
-    button_1_2.process();
-    button_1_3.process();
-  } else if (screen_state == 2) { // second screen
-    button_2_1.process();
-    button_2_2.process();
-    button_2_3.process();
-  } else if (screen_state == 3) { // Third screen
-    button_3_1.process();
-    button_3_2.process();
-    button_3_3.process();
-  } else {
-    // throw an error
-  }
-}
-
-void forward_page(JKSButton &botaoPressionado) {
-  if (screen_state == 1) {
-    screen_state = 2;
-    setup_screen_two();
-  } else {
-    screen_state = 3;
-    setup_screen_three();
-  }
-}
-
-void backward_page(JKSButton &botaoPressionado) {
-  if (screen_state == 2) {
-    screen_state = 1;
-    setup_screen_one();
-  } else {
-    screen_state = 2;
-    setup_screen_two();
+  if (detail_page) { // Details page
+    back_button.process();
+  } else { // Game page
+    next_button.process();
+    detail_button.process();
   }
 }
 
