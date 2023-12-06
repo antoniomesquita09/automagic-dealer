@@ -66,16 +66,16 @@ void setup_detail_screen(JKSButton &botaoPressionado) {
 
   String max_message = "Maximo: " + String(cur_game.max_players);
   String min_message = "Minimo: " + String(cur_game.min_players);
-  
+
   tela.setCursor(10, 60);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(4);
-  tela.print(max_message);
+  tela.print(min_message);
 
   tela.setCursor(10, 110);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(4);
-  tela.print(min_message);
+  tela.print(max_message);
 
   // go foward button
   play_button.init(&tela, &touch, 170, 250, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Jogar", 2);
@@ -112,19 +112,31 @@ void setup_config_screen(JKSButton &botaoPressionado) {
 
   // go foward button
   play_button.init(&tela, &touch, 170, 260, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Jogar", 2);
-  play_button.setPressHandler(setup_config_screen);
+  play_button.setPressHandler(start_game);
 
   // go foward button
   back_button.init(&tela, &touch, 60, 260, 100, 80, TFT_WHITE, TFT_RED, TFT_WHITE, "Voltar", 2);
   back_button.setPressHandler(setup_detail_screen);
 }
 
+void start_game() {
+  Game cur_game = game_list.get(screen_index);
+  String start_game_message = "START " + String(cur_game.name) + " " + String(players_count);
+  Serial.println(start_game_message);
+}
+
 void add_players_count() {
+  Game cur_game = game_list.get(screen_index);
+  
+  if (players_count == cur_game.max_players) {
+    return;
+  }
+
   players_count++;
 
   tela.fillRect(130, 50, 100, 40, TFT_BLACK);
 
-  String players_count_message = "Jodagores: " + String(players_count);
+  String players_count_message = "Jodagores:" + String(players_count);
 
   tela.setCursor(10, 60);
   tela.setTextColor(TFT_WHITE);
