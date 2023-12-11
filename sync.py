@@ -6,13 +6,11 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo import ssl_support
 
-# MongoDB Atlas Connection
 uri = "mongodb+srv://jpnas:iHBXPcSA5a3Rxph9@cluster0.482qyxh.mongodb.net/?retryWrites=true&w=majority"
 database_name = "card_games"
 
-# Serial Connection
-serial_port = '/dev/cu.usbmodem21301' # Substitua pelo seu dispositivo serial
-baud_rate = 9600  # Mesma taxa de baud do código Arduino
+serial_port = '/dev/cu.usbmodem1301'
+baud_rate = 9600
 
 def fetch_data():
     client = MongoClient(uri,
@@ -29,23 +27,40 @@ def fetch_data():
     db = client[database_name]
     collection = db.games
 
-    data = list(collection.find({}, {'_id': 0}))  # Busca todos os documentos, excluindo o campo '_id'
+    data = list(collection.find({}, {'_id': 0}))
     return data
 
-def send_data(serial_connection, data):
-    for game in data:
-        serial_connection.write(f'{game["name"]} {game["minPlayers"]} {game["maxPlayers"]}'.encode('utf-8'))
+def send_data(serial, game):
+    serial.write(f"game {game['name']}\n".encode('utf-8'))
 
+    serial.write(f"minPlayers {game['minPlayers']}\n".encode('utf-8'))
+
+    serial.write(f"maxPlayers {game['maxPlayers']}\n".encode('utf-8'))
+
+    serial.write("instructions\n".encode('utf-8'))
+
+    for instruction in game['instructions']:
+        serial.write(f"{instruction['type']} {instruction['cardAmount']}\n".encode('utf-8'))
+
+
+    serial.write("endinstructions\n".encode('utf-8'))
+
+    if 'excludedCards' in game:
+        excluded_cards_str = ' '.join(map(str, game['excludedCards']))
+        serial.write(f"excludedCards {excluded_cards_str}\n".encode('utf-8'))
+
+
+    serial.write("endgame\n".encode('utf-8'))
 
 def main():
     games_data = fetch_data()
 
-    # Converte os dados para um formato adequado, se necessário
-    # Por exemplo, uma simplificação ou serialização específica
-
     with serial.Serial(serial_port, baud_rate) as ser:
-        time.sleep(2)  # Aguarda a conexão serial se estabilizar
-        send_data(ser, games_data)
+        time.sleep(2)
+        ser.write(f"games {len(games_data)}".encode('utf-8'))
+        for game in games_data:
+            send_data(ser, game)
+            
         print("Dados enviados com sucesso para o Arduino.")
 
 if __name__ == "__main__":
