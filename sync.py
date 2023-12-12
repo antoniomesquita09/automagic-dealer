@@ -30,38 +30,37 @@ def fetch_data():
     data = list(collection.find({}, {'_id': 0}))
     return data
 
-def send_data(serial, game):
-    serial.write(f"game {game['name']}\n".encode('utf-8'))
+def send_data(ser, game):
+    try:
+        ser.write(f"game {game['name']}\n".encode('utf-8'))
+        ser.write(f"minPlayers {game['minPlayers']}\n".encode('utf-8'))
+        ser.write(f"maxPlayers {game['maxPlayers']}\n".encode('utf-8'))
 
-    serial.write(f"minPlayers {game['minPlayers']}\n".encode('utf-8'))
+        for instruction in game['instructions']:
+            ser.write(f"{instruction['type']} {instruction['cardAmount']}\n".encode('utf-8'))
 
-    serial.write(f"maxPlayers {game['maxPlayers']}\n".encode('utf-8'))
+        if 'excludedCards' in game:
+            excluded_cards_str = ' '.join(map(str, game['excludedCards']))
+            ser.write(f"excludedCards {excluded_cards_str}\n".encode('utf-8'))
 
-    serial.write("instructions\n".encode('utf-8'))
-
-    for instruction in game['instructions']:
-        serial.write(f"{instruction['type']} {instruction['cardAmount']}\n".encode('utf-8'))
-
-
-    serial.write("endinstructions\n".encode('utf-8'))
-
-    if 'excludedCards' in game:
-        excluded_cards_str = ' '.join(map(str, game['excludedCards']))
-        serial.write(f"excludedCards {excluded_cards_str}\n".encode('utf-8'))
-
-
-    serial.write("endgame\n".encode('utf-8'))
+        ser.write("endgame\n".encode('utf-8'))
+    except Exception as e:
+        print(f"Error sending data to Arduino: {e}")
 
 def main():
-    games_data = fetch_data()
+    try:
+        games_data = fetch_data()
 
-    with serial.Serial(serial_port, baud_rate) as ser:
-        time.sleep(2)
-        for game in games_data:
-            send_data(ser, game)
-            serial.write("cambiodesligo".encode('utf-8'))
+        with serial.Serial(serial_port, baud_rate) as ser:
+            time.sleep(2)
+            for game in games_data:
+                send_data(ser, game)
             
-        print("Dados enviados com sucesso para o Arduino.")
+            ser.write("cambiodesligo".encode('utf-8'))
+
+            print("Data sent successfully to Arduino.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main()

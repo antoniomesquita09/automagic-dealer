@@ -5,14 +5,17 @@
 struct Instruction {
   bool is_table;
   short card_amount;
-}
+};
 
 struct Game {
   short max_players;
   short min_players;
   char name[20];
-  struct Instruction[] instructions;
- }
+  short excluded_cards[52];
+  short total_excluded_cards;
+  struct Instruction instructions[20];
+  short total_instructions;
+ };
 
 LinkedList<Game> game_list;
 short total_items;
@@ -27,24 +30,6 @@ void setup() {
   EEPROM.get(0, total_items);
   Serial.println("eeprom total items response:");
   Serial.println(total_items);
-
-  for(int j = 0; j < total_items; j++) {
-    Game tmp_game;
-    EEPROM.get(sizeof(total_items) + (sizeof(Game) * j), tmp_game);
-    game_list.add(tmp_game);
-  }
-
-  for(int k = 0; k < game_list.size(); k++) {
-    game_list.get(k);
-  }
-
-Game game;
-  for(int k = 0; k < game_list.size(); k++) {
-    game = game_list.get(k);
-    Serial.println(game.name);
-    Serial.println(game.min_players);
-    Serial.println(game.max_players);
-  }
 }
 
 void loop() {
