@@ -5,12 +5,21 @@
 #include <EEPROM.h>
 #include <LinkedList.h>
 
+struct Instruction 
+{
+  bool is_table;
+  short card_amount;
+};
+
 struct Game
 {
   short max_players;
   short min_players;
   char name[20];
-  short rounds;
+  short excluded_cards[52];
+  struct Instruction instructions[20];
+  short total_instructions;
+  short total_excluded_cards;
 };
 
 LinkedList<Game> game_list;
@@ -22,11 +31,16 @@ JKSButton next_button, detail_button, back_button, play_button, add_player_butto
 
 int screen_index = 0;
 short total_items;
-bool game_list_page = false;
+bool game_list_page = true;
 bool game_detail_page = false;
 bool game_config_page = false;
 bool game_playing_page = false;
 short players_count = 0;
+int instruction_index = 0;
+int player_to_distribute_index = 0;
+int player_to_distribute_cards_count = 0;
+String CARD_ALLOWED_RESPONSE = "CARD_ALLOWED_RESPONSE";
+String CARD_ALLOWED_RESPONSE_VALUE_TRUE = "TRUE";
 
 // enum page { GAME_LIST, GAME_DETAIL, GAME_CONFIG, GAME_PLAYING };
 // page current_page = GAME_LIST;
@@ -38,8 +52,100 @@ void clean()
   tela.fillScreen(TFT_BLACK);
 }
 
-void next_round() {
+String extract_after_space(String texto)
+{
+  int spaceIndex =  texto.indexOf(' ');
+  if (spaceIndex != -1)
+  {
+    String value = texto.substring(spaceIndex + 1);
+    return value;
+  }
+}
 
+void check_card_allowed()
+{
+  Serial.println("CARD_ALLOWED_REQUEST");
+}
+
+void next_instruction() {
+  Game cur_game = game_list.get(screen_index);
+
+  Instruction cur_instruction = cur_game.instructions[instruction_index];
+
+  player_to_distribute_index = 0;
+
+  if (instruction_index < cur_game.total_instructions)
+  {
+    instruction_index++;
+  }
+  else
+  {
+    instruction_index = 0;
+    Serial.println("END GAME");
+  }
+}
+
+// If card allowed response is TRUE
+void distribute_card(bool should_distribute)
+{
+  Game cur_game = game_list.get(screen_index);
+
+  // In case card is not allowed, should discard
+  if (!should_distribute)
+  {
+    Serial.println("DISCARD");
+    return;
+  }
+
+  player_to_distribute_cards_count++;
+
+  Instruction cur_instruction = cur_game.instructions[instruction_index];
+
+  if (cur_instruction.is_table) // Distribute to table
+  {
+    Serial.println("DISTRIBUTE TABLE");
+    if (cur_instruction.card_amount == player_to_distribute_cards_count)
+    {
+      next_instruction();
+    }
+    else
+    {
+      check_card_allowed();
+    }
+  }
+  else // Distribute to player
+  {
+    String distribute_player_message = "DISTRIBUTE " + String(player_to_distribute_index);
+
+    Serial.println(distribute_player_message);
+
+    if (player_to_distribute_cards_count < cur_instruction.card_amount) // Distribute one more card to player
+    {
+      player_to_distribute_cards_count++;
+      check_card_allowed();
+    }
+    else if (player_to_distribute_index < players_count) // All players received cards, move to next instruction
+    {
+      next_instruction();
+    }
+    else // Current player received all cards from instruction, move to next player
+    {
+      player_to_distribute_index++;
+      check_card_allowed();
+    }
+  }
+}
+
+void send_excluded_cards()
+{
+  Game cur_game = game_list.get(screen_index);
+  String excluded_cards_message = "EXCLUDED_CARDS";
+
+  for (int i = 0; i < cur_game.total_excluded_cards; i++) {
+    excluded_cards_message = excluded_cards_message + " " + String(cur_game.excluded_cards[i]);
+  }
+
+  Serial.println(excluded_cards_message);
 }
 
 void start_game()
@@ -47,6 +153,7 @@ void start_game()
   Game cur_game = game_list.get(screen_index);
   String start_game_message = "START " + String(cur_game.name) + " " + String(players_count);
   Serial.println(start_game_message);
+  setup_is_playing_screen();
 }
 
 void add_players_count()
@@ -107,18 +214,39 @@ void next_game_screen()
 void seed_eeprom()
 {
   Game game1, game2, game3;
+  Instruction i1, i2, i3, i4;
 
-  game1.min_players = 4;
+  i1.card_amount = 2;
+  i1.is_table = false;
+  
+  i2.card_amount = 3;
+  i2.is_table = true;
+  
+  i3.card_amount = 1;
+  i3.is_table = true;
+    
+  i4.card_amount = 1;
+  i4.is_table = true;
+
+  game1.min_players = 2;
   game1.max_players = 4;
-  strcpy(game1.name, "truco");
+  strcpy(game1.name, "Poker");
+
+  game1.instructions[0] = i1;
+  game1.instructions[1] = i2;
+  game1.instructions[2] = i3;
+  game1.instructions[3] = i4;
+
+  game1.total_instructions = 3;
+  game1.total_excluded_cards = 3;
 
   game2.min_players = 2;
   game2.max_players = 6;
   strcpy(game2.name, "buraco");
 
-  game3.min_players = 2;
-  game3.max_players = 8;
-  strcpy(game3.name, "poker");
+  game3.min_players = 4;
+  game3.max_players = 4;
+  strcpy(game3.name, "truco");
 
   LinkedList<Game> game_list_seed;
 
@@ -164,7 +292,7 @@ void setup_game_list_screen()
   next_button.setPressHandler(next_game_screen);
 }
 
-void setup_game_detail_screen(JKSButton &botaoPressionado)
+void setup_game_detail_screen()
 {
   clean();
 
@@ -203,7 +331,7 @@ void setup_game_detail_screen(JKSButton &botaoPressionado)
   back_button.setPressHandler(setup_game_list_screen);
 }
 
-void setup_config_game_screen(JKSButton &botaoPressionado)
+void setup_config_game_screen()
 {
   clean();
 
@@ -227,12 +355,12 @@ void setup_config_game_screen(JKSButton &botaoPressionado)
   tela.print(players_count_message);
 
   // add players count button
-  add_player_button.init(&tela, &touch, 60, 160, 100, 80, TFT_WHITE, TFT_BLUE, TFT_WHITE, "Adicionar", 2);
-  add_player_button.setPressHandler(add_players_count);
+  dec_player_button.init(&tela, &touch, 60, 160, 100, 80, TFT_WHITE, TFT_ORANGE, TFT_BLACK, "-", 2);
+  dec_player_button.setPressHandler(dec_players_count);
 
   // dec players count button
-  dec_player_button.init(&tela, &touch, 170, 160, 100, 80, TFT_WHITE, TFT_ORANGE, TFT_BLACK, "Diminuir", 2);
-  dec_player_button.setPressHandler(dec_players_count);
+  add_player_button.init(&tela, &touch, 170, 160, 100, 80, TFT_WHITE, TFT_BLUE, TFT_WHITE, "+", 2);
+  add_player_button.setPressHandler(add_players_count);
 
   // go foward button
   play_button.init(&tela, &touch, 170, 260, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Jogar", 2);
@@ -243,7 +371,7 @@ void setup_config_game_screen(JKSButton &botaoPressionado)
   back_button.setPressHandler(setup_game_detail_screen);
 }
 
-void setup_is_playing_screen(JKSButton &botaoPressionado)
+void setup_is_playing_screen()
 {
   clean();
 
@@ -260,18 +388,19 @@ void setup_is_playing_screen(JKSButton &botaoPressionado)
   tela.setTextSize(4);
   tela.print(cur_game.name);
 
-  // go foward button
-  play_button.init(&tela, &touch, 170, 260, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Próximo", 2);
-  play_button.setPressHandler(next_round);
-}
+  send_excluded_cards();
 
+  // distribute next cards button
+  play_button.init(&tela, &touch, 120, 250, 200, 100, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Distribuir", 2);
+  play_button.setPressHandler(check_card_allowed);
+}
 
 void setup()
 {
   Serial.begin(9600);
 
   // Uncomment bellow to seed eeprom (udate seed_eeprom func with your custom games)
-  // seed_eeprom();
+  seed_eeprom();
 
   // Read from EEPROM
   EEPROM.get(0, total_items);
@@ -315,11 +444,25 @@ void loop()
   }
   else if (game_playing_page)
   { // Game playing page
-    next_button.process();
+    play_button.process();
   }
   else
   {
     Serial.println("[ERROR] Unkwon page status");
+  }
+
+  // Read card allowed response
+  if (Serial.available() > 0) {
+    String texto = Serial.readStringUntil('\n');
+    texto.trim();
+    if (texto.length() > 0) {
+      if (texto.startsWith(CARD_ALLOWED_RESPONSE)) {
+        String card_allowed_value = extract_after_space(texto);
+        card_allowed_value.toUpperCase();
+        bool should_distribute = card_allowed_value.startsWith(CARD_ALLOWED_RESPONSE_VALUE_TRUE);
+        distribute_card(should_distribute);
+      }
+    }
   }
 }
 
