@@ -14,8 +14,8 @@ import time
 ### Constants ###
 
 # Adaptive threshold levels
-BKG_THRESH = 90
-CARD_THRESH = 10
+BKG_THRESH = 80
+CARD_THRESH = 20
 
 # Width and height of card corner, where rank and suit are
 CORNER_WIDTH = 32
@@ -29,8 +29,8 @@ RANK_HEIGHT = 125
 SUIT_WIDTH = 70
 SUIT_HEIGHT = 100
 
-RANK_DIFF_MAX = 3500
-SUIT_DIFF_MAX = 3500
+RANK_DIFF_MAX = 5500
+SUIT_DIFF_MAX = 5500
 
 CARD_MAX_AREA = 120000
 CARD_MIN_AREA = 25000
@@ -122,7 +122,7 @@ def preprocess_image(image):
     bkg_level = gray[int(img_h/100)][int(img_w/2)]
     thresh_level = bkg_level + BKG_THRESH
 
-    retval, thresh = cv2.threshold(blur,thresh_level,255,cv2.THRESH_BINARY)
+    retval, thresh = cv2.threshold(blur,100,255,cv2.THRESH_BINARY)
     
     return thresh
 
@@ -208,7 +208,6 @@ def preprocess_card(contour, image):
     if (thresh_level <= 0):
         thresh_level = 1
     retval, query_thresh = cv2.threshold(Qcorner_zoom, thresh_level, 255, cv2. THRESH_BINARY_INV)
-    cv2.imshow("white",query_thresh)
     
     # Split in to top and bottom half (top shows rank, bottom shows suit)
     Qrank = query_thresh[20:140, 5:128]

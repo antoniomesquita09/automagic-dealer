@@ -64,7 +64,7 @@ while cam_quit == 0:
     
     # Find and sort the contours of all cards in the image (query cards)
     cnts_sort, cnt_is_card = Cards.find_cards(pre_proc)
-
+    
     # If there are no contours, do nothing
     if len(cnts_sort) != 0:
 
@@ -106,7 +106,7 @@ while cam_quit == 0:
 
     # Finally, display the image with the identified cards!
     cv2.imshow("Card Detector",image)
-    cv2.imshow("Preproc",pre_proc)
+
     # Calculate framerate
     t2 = cv2.getTickCount()
     time1 = (t2-t1)/freq
