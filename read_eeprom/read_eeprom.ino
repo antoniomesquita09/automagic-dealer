@@ -2,11 +2,18 @@
 #include <LinkedList.h>
 
 
+struct Instruction {
+  bool is_table;
+  short card_amount;
+}
+
 struct Game {
- short max_players;
- short min_players;
- char name[20];
-};
+  short max_players;
+  short min_players;
+  char name[20];
+  struct Instruction[] instructions;
+ }
+
 LinkedList<Game> game_list;
 short total_items;
 
