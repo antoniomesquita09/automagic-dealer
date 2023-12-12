@@ -3,7 +3,7 @@
 struct Instruction {
   bool is_table;
   short card_amount;
-}
+};
 
 struct Game {
   short max_players;
@@ -13,7 +13,7 @@ struct Game {
   short total_excluded_cards;
   struct Instruction instructions[20];
   short total_instructions;
- }
+ };
 
 LinkedList<Game> game_list;
 Game currentGame;
@@ -22,47 +22,29 @@ void setup() {
   Serial.begin(9600);
 }
 
-std::vector<std::string> split(const std::string& str, char delim) {
-    std::vector<std::string> tokens;
-    std::string token;
-    std::istringstream tokenStream(str);
 
-    while (std::getline(tokenStream, token, delim)) {
-        tokens.push_back(token);
-    }
 
-    return tokens;
-}
-
-void convertToShortArray(const std::string& message, short output[], int max_size) {
-    std::vector<std::string> tokens = split(message, ' ');
-    int current_index = 0;
-
-    for (size_t i = 1; i < tokens.size() && current_index < max_size; ++i) {
-        output[current_index++] = static_cast<short>(std::stoi(tokens[i]));
-    }
-}
-
-void extractExcluded(const std::string& message, short output[], int& total_cards) {
+void extractExcluded(const String& message, short output[], int& total_cards) {
     const int max_size = 52;
-    std::istringstream iss(message);
-    std::string token;
     total_cards = 0;
+    int startIndex = 0;
+    int endIndex = 0;
 
-    // Skip the first token (assumed to be "excludedCards")
-    iss >> token;
+    // Skip the first word (assumed to be "excludedCards")
+    endIndex = message.indexOf(' ', startIndex);
+    startIndex = endIndex + 1;
 
-    while (iss >> token && total_cards < max_size) {
-        try {
-            short num = static_cast<short>(std::stoi(token));
-            output[total_cards++] = num;
-        } catch (const std::invalid_argument& e) {
-            // Handle the case where the token is not a number
-            continue;
-        } catch (const std::out_of_range& e) {
-            // Handle the case where the number is too large for a short
-            continue;
+    while (startIndex < message.length() && total_cards < max_size) {
+        endIndex = message.indexOf(' ', startIndex);
+        if (endIndex == -1) {
+            endIndex = message.length();
         }
+
+        String numberStr = message.substring(startIndex, endIndex);
+        short number = numberStr.toInt();
+        output[total_cards++] = number;
+
+        startIndex = endIndex + 1;
     }
 }
 
@@ -118,7 +100,9 @@ void loop() {
         short excluded_cards[52];
         int total_excluded_cards;
         extractExcluded(message, excluded_cards, total_excluded_cards);
-        currentGame.excluded_cards = excluded_cards;
+        for (int i = 0; i < total_excluded_cards; i++) {
+          currentGame.excluded_cards[i] = excluded_cards[i];
+        }
         currentGame.total_excluded_cards = total_excluded_cards;
       }
        else if (message.startsWith("endgame")) {
