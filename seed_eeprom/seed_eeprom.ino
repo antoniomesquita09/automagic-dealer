@@ -77,45 +77,47 @@ void loop() {
       if (message.startsWith("reset")) {
         game_list.clear();
         EEPROM.put(0, 0);
+        Serial.println("ACK");
       }
 
       if (message.startsWith("name")) {
       String nameValue = extract_after_space(message);
       nameValue.toCharArray(currentGame.name, 20);
-      Serial.println(nameValue);
+      Serial.println("ACK");
       }
       else if (message.startsWith("minPlayers")) {
         currentGame.min_players = (short)extract_after_space(message).toInt();
-        Serial.println(extract_after_space(message));
+        Serial.println("ACK");
       }
       else if (message.startsWith("maxPlayers")) {
         currentGame.max_players = (short)extract_after_space(message).toInt();
-        Serial.println(extract_after_space(message));
+        Serial.println("ACK");
       }
       else if (message.startsWith("player")) {
         currentGame.instructions[instruction_count].is_table = false;
         currentGame.instructions[instruction_count].card_amount = (short)extract_after_space(message).toInt();
         instruction_count++;
-        Serial.println(extract_after_space(message));
-      } else if (message.startsWith("table")) { 
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("table")) { 
         currentGame.instructions[instruction_count].is_table = true;
         currentGame.instructions[instruction_count].card_amount = (short)extract_after_space(message).toInt();
         instruction_count++;
-        Serial.println(extract_after_space(message));
+        Serial.println("ACK");
       }
       else if (message.startsWith("excludedCards")) {
         short excluded_cards[52];
         int total_excluded_cards;
         extractExcluded(message, excluded_cards, total_excluded_cards);
-        Serial.println(message);
         for (int i = 0; i < total_excluded_cards; i++) {
           currentGame.excluded_cards[i] = excluded_cards[i];
         }
         currentGame.total_excluded_cards = total_excluded_cards;
+        Serial.println("ACK");
       }
       else if (message.startsWith("endgame")) {
         game_list.add(currentGame);
-        Serial.println("endgame");
+        Serial.println("ACK");
       }
       else if (message.startsWith("cambiodesligo")) {
         short total_seed_items = game_list.size();
@@ -123,8 +125,9 @@ void loop() {
         for (int i = 0; i < total_seed_items; i++) {
           EEPROM.put(sizeof(total_seed_items) + (sizeof(Game) * i), game_list.get(i));
         }
-        Serial.println("cambiodesligo");
+        Serial.println("ACK");
       }
     }
+    delay(50);
   }
 }
