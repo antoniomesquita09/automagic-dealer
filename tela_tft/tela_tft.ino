@@ -10,6 +10,7 @@ struct Game
   short max_players;
   short min_players;
   char name[20];
+  short rounds;
 };
 
 LinkedList<Game> game_list;
@@ -21,111 +22,24 @@ JKSButton next_button, detail_button, back_button, play_button, add_player_butto
 
 int screen_index = 0;
 short total_items;
-bool detail_page = false;
-bool config_page = false;
+bool game_list_page = false;
+bool game_detail_page = false;
+bool game_config_page = false;
+bool game_playing_page = false;
 short players_count = 0;
+
+// enum page { GAME_LIST, GAME_DETAIL, GAME_CONFIG, GAME_PLAYING };
+// page current_page = GAME_LIST;
+
+// HELPER FUNCTIONS
 
 void clean()
 {
   tela.fillScreen(TFT_BLACK);
 }
 
-void setup_game_list_screen()
-{
-  clean();
+void next_round() {
 
-  detail_page = false;
-  config_page = false;
-
-  tela.setCursor(10, 10);
-  tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
-  tela.print("DEALER");
-
-  Game cur_game = game_list.get(screen_index);
-
-  // game click button
-  detail_button.init(&tela, &touch, 120, 130, 200, 100, TFT_WHITE, TFT_GREEN, TFT_BLACK, cur_game.name, 2);
-  detail_button.setPressHandler(setup_game_detail_screen);
-
-  // go foward button
-  next_button.init(&tela, &touch, 120, 250, 200, 100, TFT_WHITE, TFT_BLUE, TFT_WHITE, "Proximo", 2);
-  next_button.setPressHandler(next_game_screen);
-}
-
-void setup_game_detail_screen(JKSButton &botaoPressionado)
-{
-  clean();
-
-  detail_page = true;
-  config_page = false;
-
-  Game cur_game = game_list.get(screen_index);
-  players_count = cur_game.min_players;
-
-  tela.setCursor(10, 10);
-  tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
-  tela.print(cur_game.name);
-
-  String max_message = "Maximo: " + String(cur_game.max_players);
-  String min_message = "Minimo: " + String(cur_game.min_players);
-
-  tela.setCursor(10, 60);
-  tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
-  tela.print(min_message);
-
-  tela.setCursor(10, 110);
-  tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
-  tela.print(max_message);
-
-  // go foward button
-  play_button.init(&tela, &touch, 170, 250, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Jogar", 2);
-  play_button.setPressHandler(setup_config_game_screen);
-
-  // go foward button
-  back_button.init(&tela, &touch, 60, 250, 100, 80, TFT_WHITE, TFT_RED, TFT_WHITE, "Voltar", 2);
-  back_button.setPressHandler(setup_game_list_screen);
-}
-
-void setup_config_game_screen(JKSButton &botaoPressionado)
-{
-  clean();
-
-  detail_page = false;
-  config_page = true;
-
-  Game cur_game = game_list.get(screen_index);
-
-  String players_count_message = "Jodagores: " + String(players_count);
-
-  tela.setCursor(10, 10);
-  tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
-  tela.print(cur_game.name);
-
-  tela.setCursor(10, 60);
-  tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(3);
-  tela.print(players_count_message);
-
-  // add players count button
-  add_player_button.init(&tela, &touch, 60, 160, 100, 80, TFT_WHITE, TFT_BLUE, TFT_WHITE, "Adicionar", 2);
-  add_player_button.setPressHandler(add_players_count);
-
-  // dec players count button
-  dec_player_button.init(&tela, &touch, 170, 160, 100, 80, TFT_WHITE, TFT_ORANGE, TFT_BLACK, "Diminuir", 2);
-  dec_player_button.setPressHandler(dec_players_count);
-
-  // go foward button
-  play_button.init(&tela, &touch, 170, 260, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Jogar", 2);
-  play_button.setPressHandler(start_game);
-
-  // go foward button
-  back_button.init(&tela, &touch, 60, 260, 100, 80, TFT_WHITE, TFT_RED, TFT_WHITE, "Voltar", 2);
-  back_button.setPressHandler(setup_game_detail_screen);
 }
 
 void start_game()
@@ -223,6 +137,135 @@ void seed_eeprom()
   }
 }
 
+// SETUP FUNCTIONS
+
+void setup_game_list_screen()
+{
+  clean();
+
+  game_list_page = true;
+  game_detail_page = false;
+  game_config_page = false;
+  game_playing_page = false;
+
+  tela.setCursor(10, 10);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(4);
+  tela.print("DEALER");
+
+  Game cur_game = game_list.get(screen_index);
+
+  // game click button
+  detail_button.init(&tela, &touch, 120, 130, 200, 100, TFT_WHITE, TFT_GREEN, TFT_BLACK, cur_game.name, 2);
+  detail_button.setPressHandler(setup_game_detail_screen);
+
+  // go foward button
+  next_button.init(&tela, &touch, 120, 250, 200, 100, TFT_WHITE, TFT_BLUE, TFT_WHITE, "Proximo", 2);
+  next_button.setPressHandler(next_game_screen);
+}
+
+void setup_game_detail_screen(JKSButton &botaoPressionado)
+{
+  clean();
+
+  game_list_page = false;
+  game_detail_page = true;
+  game_config_page = false;
+  game_playing_page = false;
+
+  Game cur_game = game_list.get(screen_index);
+  players_count = cur_game.min_players;
+
+  tela.setCursor(10, 10);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(4);
+  tela.print(cur_game.name);
+
+  String max_message = "Maximo: " + String(cur_game.max_players);
+  String min_message = "Minimo: " + String(cur_game.min_players);
+
+  tela.setCursor(10, 60);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(4);
+  tela.print(min_message);
+
+  tela.setCursor(10, 110);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(4);
+  tela.print(max_message);
+
+  // go foward button
+  play_button.init(&tela, &touch, 170, 250, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Jogar", 2);
+  play_button.setPressHandler(setup_config_game_screen);
+
+  // go foward button
+  back_button.init(&tela, &touch, 60, 250, 100, 80, TFT_WHITE, TFT_RED, TFT_WHITE, "Voltar", 2);
+  back_button.setPressHandler(setup_game_list_screen);
+}
+
+void setup_config_game_screen(JKSButton &botaoPressionado)
+{
+  clean();
+
+  game_list_page = false;
+  game_detail_page = false;
+  game_config_page = true;
+  game_playing_page = false;
+
+  Game cur_game = game_list.get(screen_index);
+
+  String players_count_message = "Jodagores: " + String(players_count);
+
+  tela.setCursor(10, 10);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(4);
+  tela.print(cur_game.name);
+
+  tela.setCursor(10, 60);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(3);
+  tela.print(players_count_message);
+
+  // add players count button
+  add_player_button.init(&tela, &touch, 60, 160, 100, 80, TFT_WHITE, TFT_BLUE, TFT_WHITE, "Adicionar", 2);
+  add_player_button.setPressHandler(add_players_count);
+
+  // dec players count button
+  dec_player_button.init(&tela, &touch, 170, 160, 100, 80, TFT_WHITE, TFT_ORANGE, TFT_BLACK, "Diminuir", 2);
+  dec_player_button.setPressHandler(dec_players_count);
+
+  // go foward button
+  play_button.init(&tela, &touch, 170, 260, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Jogar", 2);
+  play_button.setPressHandler(start_game);
+
+  // go foward button
+  back_button.init(&tela, &touch, 60, 260, 100, 80, TFT_WHITE, TFT_RED, TFT_WHITE, "Voltar", 2);
+  back_button.setPressHandler(setup_game_detail_screen);
+}
+
+void setup_is_playing_screen(JKSButton &botaoPressionado)
+{
+  clean();
+
+  game_list_page = false;
+  game_detail_page = false;
+  game_config_page = false;
+  game_playing_page = true;
+
+  Game cur_game = game_list.get(screen_index);
+  players_count = cur_game.min_players;
+
+  tela.setCursor(10, 10);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(4);
+  tela.print(cur_game.name);
+
+  // go foward button
+  play_button.init(&tela, &touch, 170, 260, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Próximo", 2);
+  play_button.setPressHandler(next_round);
+}
+
+
 void setup()
 {
   Serial.begin(9600);
@@ -253,22 +296,30 @@ void setup()
 
 void loop()
 {
-  if (detail_page)
-  { // Details page
+  if (game_detail_page)
+  { // Game details page
     back_button.process();
     play_button.process();
   }
-  else if (config_page)
-  { // Config page
+  else if (game_config_page)
+  { // Game config page
     back_button.process();
     play_button.process();
     add_player_button.process();
     dec_player_button.process();
   }
-  else
-  { // Game page
+  else if (game_list_page)
+  { // Game list page
     next_button.process();
     detail_button.process();
+  }
+  else if (game_playing_page)
+  { // Game playing page
+    next_button.process();
+  }
+  else
+  {
+    Serial.println("[ERROR] Unkwon page status");
   }
 }
 
