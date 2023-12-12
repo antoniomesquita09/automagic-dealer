@@ -9,7 +9,7 @@ from pymongo import ssl_support
 uri = "mongodb+srv://jpnas:iHBXPcSA5a3Rxph9@cluster0.482qyxh.mongodb.net/?retryWrites=true&w=majority"
 database_name = "card_games"
 
-serial_port = '/dev/cu.usbmodem101'
+serial_port = '/dev/cu.usbmodem1301'
 baud_rate = 9600
 
 def fetch_data():
@@ -53,6 +53,7 @@ def main():
 
         with serial.Serial(serial_port, baud_rate) as ser:
             time.sleep(2)
+            ser.write("reset\n".encode('utf-8'))
             for game in games_data:
                 send_data(ser, game)
             

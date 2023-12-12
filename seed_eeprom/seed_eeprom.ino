@@ -74,6 +74,11 @@ void loop() {
     message.trim();
     if (message.length() > 0) {
 
+      if (message.startsWith("reset")) {
+        game_list.clear();
+        EEPROM.put(0, 0);
+      }
+
       if (message.startsWith("name")) {
       String nameValue = extract_after_space(message);
       nameValue.toCharArray(currentGame.name, 20);
@@ -92,7 +97,7 @@ void loop() {
         currentGame.instructions[instruction_count].card_amount = (short)extract_after_space(message).toInt();
         instruction_count++;
         Serial.println(extract_after_space(message));
-      } else if (message.startsWith("table")) {
+      } else if (message.startsWith("table")) { 
         currentGame.instructions[instruction_count].is_table = true;
         currentGame.instructions[instruction_count].card_amount = (short)extract_after_space(message).toInt();
         instruction_count++;

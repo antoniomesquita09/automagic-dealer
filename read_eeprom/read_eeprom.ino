@@ -15,7 +15,7 @@ struct Game {
   short total_excluded_cards;
   struct Instruction instructions[20];
   short total_instructions;
- };
+ }; 
 
 LinkedList<Game> game_list;
 short total_items;
