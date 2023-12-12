@@ -1,4 +1,5 @@
 #include <LinkedList.h>
+#include <EEPROM.h>
 
 struct Instruction {
   bool is_table;
@@ -21,8 +22,6 @@ Game currentGame;
 void setup() {
   Serial.begin(9600);
 }
-
-
 
 void extractExcluded(const String& message, short output[], int& total_cards) {
     const int max_size = 52;
@@ -105,8 +104,15 @@ void loop() {
         }
         currentGame.total_excluded_cards = total_excluded_cards;
       }
-       else if (message.startsWith("endgame")) {
+      else if (message.startsWith("endgame")) {
         game_list.add(currentGame);
+      }
+      else if (message.startsWith("cambiodesligo")) {
+        short total_seed_items = game_list.size();
+        EEPROM.put(0, total_seed_items);
+        for (int i = 0; i < total_seed_items; i++) {
+          EEPROM.put(sizeof(total_seed_items) + (sizeof(Game) * i), game_list.get(i));
+        }
       }
     }
   }

@@ -31,7 +31,6 @@ def fetch_data():
     return data
 
 def send_data(serial, game):
-    print(game['name'])
     serial.write(f"game {game['name']}\n".encode('utf-8'))
 
     serial.write(f"minPlayers {game['minPlayers']}\n".encode('utf-8'))
@@ -60,6 +59,7 @@ def main():
         time.sleep(2)
         for game in games_data:
             send_data(ser, game)
+            serial.write("cambiodesligo".encode('utf-8'))
             
         print("Dados enviados com sucesso para o Arduino.")
 
