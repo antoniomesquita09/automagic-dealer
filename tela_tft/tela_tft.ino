@@ -189,7 +189,7 @@ void distribute_card(bool should_distribute)
   // In case card is not allowed, should discard
   if (!should_distribute)
   {
-    Serial.println(DISCARD_EVENT_MESSAGE);
+    Serial1.println(DISCARD_EVENT_MESSAGE);
     check_card_allowed();
     return;
   }
@@ -198,7 +198,7 @@ void distribute_card(bool should_distribute)
 
   if (current_instruction.is_table) // Distribute to table
   {
-    Serial.println(DISTRIBUTE_TABLE_MESSAGE);
+    Serial1.println(DISTRIBUTE_TABLE_MESSAGE);
 
     current_player_cards_received++;
 
@@ -216,7 +216,7 @@ void distribute_card(bool should_distribute)
   {
     String distribute_player_message = "DISTRIBUTE " + String(current_player_index);
 
-    Serial.println(distribute_player_message);
+    Serial1.println(distribute_player_message);
 
     current_player_cards_received++;
 
@@ -535,6 +535,7 @@ void setup_game_over_screen()
 void setup()
 {
   Serial.begin(9600);
+  Serial1.begin(9600);
 
   // Uncomment bellow to seed eeprom (udate seed_eeprom func with your custom games)
   // seed_eeprom();
