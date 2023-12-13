@@ -42,6 +42,7 @@ int current_player_index = 0;
 int current_player_cards_received = 0;
 String CARD_ALLOWED_RESPONSE = "CARD_ALLOWED_RESPONSE";
 String CARD_ALLOWED_RESPONSE_VALUE_TRUE = "TRUE";
+bool is_distributing = false;
 
 // enum page { GAME_LIST, GAME_DETAIL, GAME_CONFIG, GAME_PLAYING };
 // page current_page = GAME_LIST;
@@ -68,10 +69,16 @@ String extract_after_space(String texto)
   }
 }
 
+void hide_distribute_button() {
+  tela.fillRect(20, 200, 200, 100, TFT_BLACK);
+}
+
 void check_card_allowed()
 {
   String card_allowed_request_message = "CARD_ALLOWED_REQUEST";
   Serial.println(card_allowed_request_message);
+  is_distributing = true;
+  hide_distribute_button();
 }
 
 bool is_current_instruction_the_last() {
@@ -83,11 +90,11 @@ void update_instruction()
 {
   tela.fillRect(130, 50, 100, 40, TFT_BLACK);
 
-  String turn_message = "Rodada: " + String(instruction_index);
+  String turn_message = "Distribuicao: " + String(instruction_index + 1);
 
   tela.setCursor(10, 50);
   tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
+  tela.setTextSize(2);
   tela.print(turn_message);
 }
 
@@ -97,6 +104,8 @@ void next_instruction()
 
   current_player_index = 0;
   current_player_cards_received = 0;
+  
+  is_distributing = false;
 
   if (is_current_instruction_the_last()) // When is the last instruction
   {
@@ -112,6 +121,7 @@ void next_instruction()
 
 bool is_current_distribution_done()
 {
+  Game current_game = game_list.get(game_index);
   Instruction current_instruction = current_game.instructions[instruction_index];
   return current_player_cards_received >= current_instruction.card_amount; // Indexed by 0
 }
@@ -438,11 +448,11 @@ void setup_is_playing_screen()
   tela.setTextSize(4);
   tela.print(current_game.name);
 
-  String turn_message = "Rodada: " + String(instruction_index);
+  String turn_message = "Distribuicao: " + String(instruction_index + 1);
 
   tela.setCursor(10, 50);
   tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
+  tela.setTextSize(2);
   tela.print(turn_message);
 
   send_excluded_cards();
@@ -521,7 +531,9 @@ void loop()
   }
   else if (game_playing_page)
   { // Game playing page
-    play_button.process();
+    if (!is_distributing) {
+      play_button.process();
+    }
   }
   else if (game_over_page)
   { // Game over page
