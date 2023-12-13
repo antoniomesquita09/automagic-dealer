@@ -118,6 +118,25 @@ String extract_after_space(String texto)
   }
 }
 
+void update_distribution_message() {
+  tela.fillRect(10, 120, 100, 40, TFT_BLACK);
+
+  Instruction current_instruction = current_game.instructions[instruction_index];
+
+  String current_distribution_message = "Para ";
+
+  if (current_instruction.is_table) {
+    current_distribution_message = current_distribution_message + "a mesa";
+  } else {
+    current_distribution_message = current_distribution_message + " jogador(a) " + String(current_player_index + 1);
+  }
+
+  tela.setCursor(10, 120);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(2);
+  tela.print(current_distribution_message);
+}
+
 void hide_distribute_button()
 {
   tela.fillRect(20, 200, 200, 100, TFT_BLACK);
@@ -254,7 +273,7 @@ void send_excluded_cards()
 void start_game()
 {
   Game current_game = game_list.get(game_index);
-  String start_game_message = "START " + String(current_game.name) + " " + String(total_players);
+  String start_game_message = "START " + String(total_players);
   Serial.println(start_game_message);
   setup_is_playing_screen();
 }
@@ -500,6 +519,8 @@ void setup_is_playing_screen()
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(2);
   tela.print(turn_message);
+
+  update_distribution_message();
 
   send_excluded_cards();
 
