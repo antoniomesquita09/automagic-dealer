@@ -46,6 +46,11 @@ int current_player_index = 0;
 int current_player_cards_received = 0;
 String CARD_ALLOWED_RESPONSE = "CARD_ALLOWED_RESPONSE";
 String CARD_ALLOWED_RESPONSE_VALUE_TRUE = "TRUE";
+String DISCARD_EVENT_MESSAGE = "cospe";
+String CARD_ALLOWED_REQUEST_MESSAGE = "CARD_ALLOWED_REQUEST";
+String DISTRIBUTE_TABLE_MESSAGE = "DISTRIBUTE TABLE";
+String DISTRIBUTE_PLAYER_MESSAGE = "DISTRIBUTE " + String(current_player_index);
+
 bool is_distributing = false;
 
 // enum page { GAME_LIST, GAME_DETAIL, GAME_CONFIG, GAME_PLAYING };
@@ -53,7 +58,8 @@ bool is_distributing = false;
 
 // HELPER FUNCTIONS
 
-void extract_excluded(const String& message, short output[], int& total_cards) {
+void extract_excluded(const String &message, short output[], int &total_cards)
+{
   const int max_size = 52;
   total_cards = 0;
   int startIndex = 0;
@@ -63,9 +69,11 @@ void extract_excluded(const String& message, short output[], int& total_cards) {
   endIndex = message.indexOf(' ', startIndex);
   startIndex = endIndex + 1;
 
-  while (startIndex < message.length() && total_cards < max_size) {
+  while (startIndex < message.length() && total_cards < max_size)
+  {
     endIndex = message.indexOf(' ', startIndex);
-    if (endIndex == -1) {
+    if (endIndex == -1)
+    {
       endIndex = message.length();
     }
 
@@ -77,12 +85,16 @@ void extract_excluded(const String& message, short output[], int& total_cards) {
   }
 }
 
-String extract_before_space(String texto) {
+String extract_before_space(String texto)
+{
   int spaceIndex = texto.indexOf(' ');
-  if (spaceIndex != -1) {
+  if (spaceIndex != -1)
+  {
     String value = texto.substring(0, spaceIndex);
     return value;
-  } else {
+  }
+  else
+  {
     return texto;
   }
 }
@@ -107,19 +119,20 @@ String extract_after_space(String texto)
   }
 }
 
-void hide_distribute_button() {
+void hide_distribute_button()
+{
   tela.fillRect(20, 200, 200, 100, TFT_BLACK);
 }
 
 void check_card_allowed()
 {
-  String card_allowed_request_message = "CARD_ALLOWED_REQUEST";
-  Serial.println(card_allowed_request_message);
+  Serial.println(CARD_ALLOWED_REQUEST_MESSAGE);
   is_distributing = true;
   hide_distribute_button();
 }
 
-bool is_current_instruction_the_last() {
+bool is_current_instruction_the_last()
+{
   Game current_game = game_list.get(game_index);
   return instruction_index == current_game.total_instructions - 1;
 }
@@ -142,7 +155,7 @@ void next_instruction()
 
   current_player_index = 0;
   current_player_cards_received = 0;
-  
+
   is_distributing = false;
 
   if (is_current_instruction_the_last()) // When is the last instruction
@@ -177,7 +190,7 @@ void distribute_card(bool should_distribute)
   // In case card is not allowed, should discard
   if (!should_distribute)
   {
-    Serial.println("DISCARD");
+    Serial.println(DISCARD_EVENT_MESSAGE);
     return;
   }
 
@@ -185,7 +198,7 @@ void distribute_card(bool should_distribute)
 
   if (current_instruction.is_table) // Distribute to table
   {
-    Serial.println("DISTRIBUTE TABLE");
+    Serial.println(DISTRIBUTE_TABLE_MESSAGE);
 
     current_player_cards_received++;
 
@@ -201,9 +214,7 @@ void distribute_card(bool should_distribute)
   }
   else // Distribute to player
   {
-    String distribute_player_message = "DISTRIBUTE " + String(current_player_index);
-
-    Serial.println(distribute_player_message);
+    Serial.println(DISTRIBUTE_PLAYER_MESSAGE);
 
     current_player_cards_received++;
 
@@ -568,7 +579,8 @@ void loop()
   }
   else if (game_playing_page)
   { // Game playing page
-    if (!is_distributing) {
+    if (!is_distributing)
+    {
       play_button.process();
     }
   }
@@ -582,13 +594,14 @@ void loop()
     Serial.println("[ERROR] Unknown page status");
   }
 
-  // Read card allowed response
   if (Serial.available() > 0)
   {
     String message = Serial.readStringUntil('\n');
     message.trim();
     if (message.length() > 0)
     {
+
+      // Handle card recognition event consumer
       if (message.startsWith(CARD_ALLOWED_RESPONSE))
       {
         String card_allowed_value = extract_after_space(message);
@@ -597,57 +610,68 @@ void loop()
         distribute_card(should_distribute);
       }
 
-      if (message.startsWith("reset")) {
+      // Handle games database sync
+      if (message.startsWith("reset"))
+      {
         game_list.clear();
         EEPROM.put(0, 0);
         Serial.println("ACK");
       }
-
-      if (message.startsWith("name")) {
+      if (message.startsWith("name"))
+      {
         String name_value = extract_after_space(message);
         name_value.toCharArray(current_game_to_save.name, 20);
         Serial.println("ACK");
       }
-      else if (message.startsWith("minPlayers")) {
+      else if (message.startsWith("minPlayers"))
+      {
         current_game_to_save.min_players = (short)extract_after_space(message).toInt();
         Serial.println("ACK");
       }
-      else if (message.startsWith("maxPlayers")) {
+      else if (message.startsWith("maxPlayers"))
+      {
         current_game_to_save.max_players = (short)extract_after_space(message).toInt();
         Serial.println("ACK");
       }
-      else if (message.startsWith("players")) {
+      else if (message.startsWith("players"))
+      {
         current_game_to_save.instructions[current_game_to_save_instruction_count].is_table = false;
         current_game_to_save.instructions[current_game_to_save_instruction_count].card_amount = (short)extract_after_space(message).toInt();
         current_game_to_save_instruction_count++;
         Serial.println("ACK");
       }
-      else if (message.startsWith("table")) { 
+      else if (message.startsWith("table"))
+      {
         current_game_to_save.instructions[current_game_to_save_instruction_count].is_table = true;
         current_game_to_save.instructions[current_game_to_save_instruction_count].card_amount = (short)extract_after_space(message).toInt();
         current_game_to_save_instruction_count++;
         Serial.println("ACK");
       }
-      else if (message.startsWith("excludedCards")) {
+      else if (message.startsWith("excludedCards"))
+      {
         short excluded_cards[52];
         int total_excluded_cards;
         extract_excluded(message, excluded_cards, total_excluded_cards);
-        for (int i = 0; i < total_excluded_cards; i++) {
+        for (int i = 0; i < total_excluded_cards; i++)
+        {
           current_game_to_save.excluded_cards[i] = excluded_cards[i];
         }
         current_game_to_save.total_excluded_cards = total_excluded_cards;
         Serial.println("ACK");
       }
-      else if (message.startsWith("endgame")) {
+      else if (message.startsWith("endgame"))
+      {
         current_game_to_save.total_instructions = current_game_to_save_instruction_count;
         current_game_to_save_instruction_count = 0;
         game_list_to_save.add(current_game_to_save);
         Serial.println("ACK");
       }
-      else if (message.startsWith("cambiodesligo")) {
+      else if (message.startsWith("cambiodesligo"))
+      {
         short total_seed_items = game_list_to_save.size();
         EEPROM.put(0, total_seed_items);
-        for (int i = 0; i < total_seed_items; i++) {
+        for (int i = 0; i < total_seed_items; i++)
+        {
           EEPROM.put(sizeof(total_seed_items) + (sizeof(Game) * i), game_list_to_save.get(i));
         }
         Serial.println("ACK");
