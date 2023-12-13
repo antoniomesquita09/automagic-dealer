@@ -23,6 +23,8 @@ struct Game
 };
 
 LinkedList<Game> game_list;
+
+LinkedList<Game> game_list_to_save;
 Game current_game_to_save;
 short current_game_to_save_instruction_count = 0;
 
@@ -124,11 +126,11 @@ bool is_current_instruction_the_last() {
 
 void update_instruction()
 {
-  tela.fillRect(130, 50, 100, 40, TFT_BLACK);
+  tela.fillRect(130, 80, 100, 40, TFT_BLACK);
 
   String turn_message = "Distribuicao: " + String(instruction_index + 1);
 
-  tela.setCursor(10, 50);
+  tela.setCursor(10, 80);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(2);
   tela.print(turn_message);
@@ -227,11 +229,6 @@ void send_excluded_cards()
 {
   Game current_game = game_list.get(game_index);
   String excluded_cards_message = "EXCLUDED_CARDS";
-
-  if (current_game.total_excluded_cards == 0)
-  {
-    return;
-  }
 
   for (int i = 0; i < current_game.total_excluded_cards; i++)
   {
@@ -407,14 +404,14 @@ void setup_game_detail_screen()
   String max_message = "Maximo: " + String(current_game.max_players);
   String min_message = "Minimo: " + String(current_game.min_players);
 
-  tela.setCursor(10, 60);
+  tela.setCursor(10, 80);
   tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
+  tela.setTextSize(2);
   tela.print(min_message);
 
   tela.setCursor(10, 110);
   tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
+  tela.setTextSize(2);
   tela.print(max_message);
 
   // go foward button
@@ -486,7 +483,7 @@ void setup_is_playing_screen()
 
   String turn_message = "Distribuicao: " + String(instruction_index + 1);
 
-  tela.setCursor(10, 50);
+  tela.setCursor(10, 80);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(2);
   tela.print(turn_message);
@@ -514,8 +511,12 @@ void setup_game_over_screen()
   tela.print("Game over");
 
   // distribute next cards button
-  play_button.init(&tela, &touch, 120, 250, 200, 100, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Replay", 2);
+  play_button.init(&tela, &touch, 170, 250, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Replay", 2);
   play_button.setPressHandler(setup_is_playing_screen);
+
+  // go foward button
+  back_button.init(&tela, &touch, 60, 250, 100, 80, TFT_WHITE, TFT_RED, TFT_WHITE, "Sair", 2);
+  back_button.setPressHandler(setup_game_list_screen);
 }
 
 void setup()
@@ -574,6 +575,7 @@ void loop()
   else if (game_over_page)
   { // Game over page
     play_button.process();
+    back_button.process();
   }
   else
   {
@@ -614,7 +616,7 @@ void loop()
         current_game_to_save.max_players = (short)extract_after_space(message).toInt();
         Serial.println("ACK");
       }
-      else if (message.startsWith("player")) {
+      else if (message.startsWith("players")) {
         current_game_to_save.instructions[current_game_to_save_instruction_count].is_table = false;
         current_game_to_save.instructions[current_game_to_save_instruction_count].card_amount = (short)extract_after_space(message).toInt();
         current_game_to_save_instruction_count++;
@@ -637,14 +639,16 @@ void loop()
         Serial.println("ACK");
       }
       else if (message.startsWith("endgame")) {
-        game_list.add(current_game_to_save);
+        current_game_to_save.total_instructions = current_game_to_save_instruction_count;
+        current_game_to_save_instruction_count = 0;
+        game_list_to_save.add(current_game_to_save);
         Serial.println("ACK");
       }
       else if (message.startsWith("cambiodesligo")) {
-        short total_seed_items = game_list.size();
+        short total_seed_items = game_list_to_save.size();
         EEPROM.put(0, total_seed_items);
         for (int i = 0; i < total_seed_items; i++) {
-          EEPROM.put(sizeof(total_seed_items) + (sizeof(Game) * i), game_list.get(i));
+          EEPROM.put(sizeof(total_seed_items) + (sizeof(Game) * i), game_list_to_save.get(i));
         }
         Serial.println("ACK");
       }
