@@ -5,7 +5,7 @@
 #include <EEPROM.h>
 #include <LinkedList.h>
 
-struct Instruction 
+struct Instruction
 {
   bool is_table;
   short card_amount;
@@ -29,17 +29,17 @@ TouchScreen touch(6, A1, A2, 7, 300);
 
 JKSButton next_button, detail_button, back_button, play_button, add_player_button, dec_player_button;
 
-int screen_index = 0;
+int game_index = 0;
 short total_items;
 bool game_list_page = true;
 bool game_detail_page = false;
 bool game_config_page = false;
 bool game_playing_page = false;
 bool game_over_page = false;
-short players_count = 0;
+short total_players = 0;
 int instruction_index = 0;
-int player_to_distribute_index = 0;
-int player_to_distribute_cards_count = 0;
+int current_player_index = 0;
+int current_player_cards_received = 0;
 String CARD_ALLOWED_RESPONSE = "CARD_ALLOWED_RESPONSE";
 String CARD_ALLOWED_RESPONSE_VALUE_TRUE = "TRUE";
 
@@ -53,9 +53,14 @@ void clean()
   tela.fillScreen(TFT_BLACK);
 }
 
+void clean_pos(int x1, int y1, int x2, int y2)
+{
+  tela.fillRect(x1, x2, y1, y2, TFT_BLACK);
+}
+
 String extract_after_space(String texto)
 {
-  int spaceIndex =  texto.indexOf(' ');
+  int spaceIndex = texto.indexOf(' ');
   if (spaceIndex != -1)
   {
     String value = texto.substring(spaceIndex + 1);
@@ -69,29 +74,57 @@ void check_card_allowed()
   Serial.println(card_allowed_request_message);
 }
 
-void next_instruction() {
-  Game cur_game = game_list.get(screen_index);
+bool is_current_instruction_the_last() {
+  Game current_game = game_list.get(game_index);
+  return instruction_index == current_game.total_instructions - 1;
+}
 
-  Instruction cur_instruction = cur_game.instructions[instruction_index];
+void update_instruction()
+{
+  tela.fillRect(130, 50, 100, 40, TFT_BLACK);
 
-  player_to_distribute_index = 0;
-  player_to_distribute_cards_count= 0;
+  String turn_message = "Rodada: " + String(instruction_index);
 
-  if (instruction_index < cur_game.total_instructions)
+  tela.setCursor(10, 50);
+  tela.setTextColor(TFT_WHITE);
+  tela.setTextSize(4);
+  tela.print(turn_message);
+}
+
+void next_instruction()
+{
+  Game current_game = game_list.get(game_index);
+
+  current_player_index = 0;
+  current_player_cards_received = 0;
+
+  if (is_current_instruction_the_last()) // When is the last instruction
+  {
+    instruction_index = 0;
+    setup_game_over_screen();
+  }
+  else // Go to next instruction
   {
     instruction_index++;
-    setup_is_playing_screen();
-  }
-  else
-  {
-    setup_game_over_screen();
+    update_instruction();
   }
 }
 
-// If card allowed response is TRUE
+bool is_current_distribution_done()
+{
+  Instruction current_instruction = current_game.instructions[instruction_index];
+  return current_player_cards_received >= current_instruction.card_amount; // Indexed by 0
+}
+
+bool is_current_player_the_last()
+{
+  return current_player_index == total_players - 1; // Indexed by 1
+}
+
+// Card distribute event consumer
 void distribute_card(bool should_distribute)
 {
-  Game cur_game = game_list.get(screen_index);
+  Game current_game = game_list.get(game_index);
 
   // In case card is not allowed, should discard
   if (!should_distribute)
@@ -100,58 +133,63 @@ void distribute_card(bool should_distribute)
     return;
   }
 
-  Instruction cur_instruction = cur_game.instructions[instruction_index];
+  Instruction current_instruction = current_game.instructions[instruction_index];
 
-  if (cur_instruction.is_table) // Distribute to table
+  if (current_instruction.is_table) // Distribute to table
   {
     Serial.println("DISTRIBUTE TABLE");
-    if (player_to_distribute_cards_count < cur_instruction.card_amount - 1) // The table should receive one more card
-    {
-      player_to_distribute_cards_count++;
-      check_card_allowed();
-    }
-    else // The table already received all cards, move to the next instruction 
+
+    current_player_cards_received++;
+
+    // Move to the next instruction || Distribute one more card
+    if (is_current_distribution_done()) // The table should receive one more card
     {
       next_instruction();
+    }
+    else // The table already received all cards, move to the next instruction
+    {
+      check_card_allowed();
     }
   }
   else // Distribute to player
   {
-    String distribute_player_message = "DISTRIBUTE " + String(player_to_distribute_index);
+    String distribute_player_message = "DISTRIBUTE " + String(current_player_index);
 
     Serial.println(distribute_player_message);
 
-    player_to_distribute_cards_count++;
+    current_player_cards_received++;
 
-    if (player_to_distribute_cards_count < cur_instruction.card_amount) // Current player should receive one more card
-    {
-      check_card_allowed();
-    }
-    else if (player_to_distribute_index < players_count - 1) // Current player received all cards from instruction, move to next player
-    {
-      player_to_distribute_index++;
-      player_to_distribute_cards_count = 0;
-      check_card_allowed();
-    }
-    else // All players received cards, move to next instruction
+    // Move to next instruction || Move to the next player || Distribute one more card
+    if (is_current_distribution_done() && is_current_player_the_last()) // All players received cards, move to next instruction
     {
       next_instruction();
+    }
+    else if (is_current_distribution_done()) // Current player received all cards from instruction, move to next player
+    {
+      current_player_index++;
+      current_player_cards_received = 0;
+      check_card_allowed();
+    }
+    else // Current player should receive one more card
+    {
+      check_card_allowed();
     }
   }
 }
 
 void send_excluded_cards()
 {
-  Game cur_game = game_list.get(screen_index);
+  Game current_game = game_list.get(game_index);
   String excluded_cards_message = "EXCLUDED_CARDS";
 
-  if (cur_game.total_excluded_cards == 0)
+  if (current_game.total_excluded_cards == 0)
   {
     return;
   }
 
-  for (int i = 0; i < cur_game.total_excluded_cards; i++) {
-    excluded_cards_message = excluded_cards_message + " " + String(cur_game.excluded_cards[i]);
+  for (int i = 0; i < current_game.total_excluded_cards; i++)
+  {
+    excluded_cards_message = excluded_cards_message + " " + String(current_game.excluded_cards[i]);
   }
 
   Serial.println(excluded_cards_message);
@@ -159,26 +197,26 @@ void send_excluded_cards()
 
 void start_game()
 {
-  Game cur_game = game_list.get(screen_index);
-  String start_game_message = "START " + String(cur_game.name) + " " + String(players_count);
+  Game current_game = game_list.get(game_index);
+  String start_game_message = "START " + String(current_game.name) + " " + String(total_players);
   Serial.println(start_game_message);
   setup_is_playing_screen();
 }
 
 void add_players_count()
 {
-  Game cur_game = game_list.get(screen_index);
+  Game current_game = game_list.get(game_index);
 
-  if (players_count == cur_game.max_players)
+  if (total_players == current_game.max_players)
   {
     return;
   }
 
-  players_count++;
+  total_players++;
 
   tela.fillRect(130, 50, 100, 40, TFT_BLACK);
 
-  String players_count_message = "Jogadores:" + String(players_count);
+  String players_count_message = "Jogadores:" + String(total_players);
 
   tela.setCursor(10, 60);
   tela.setTextColor(TFT_WHITE);
@@ -188,18 +226,18 @@ void add_players_count()
 
 void dec_players_count()
 {
-  Game cur_game = game_list.get(screen_index);
+  Game current_game = game_list.get(game_index);
 
-  if (players_count == cur_game.min_players)
+  if (total_players == current_game.min_players)
   {
     return;
   }
 
-  players_count--;
+  total_players--;
 
   tela.fillRect(130, 50, 100, 40, TFT_BLACK);
 
-  String players_count_message = "Jogadores:" + String(players_count);
+  String players_count_message = "Jogadores:" + String(total_players);
 
   tela.setCursor(10, 60);
   tela.setTextColor(TFT_WHITE);
@@ -209,13 +247,13 @@ void dec_players_count()
 
 void next_game_screen()
 {
-  if (screen_index == total_items - 1)
+  if (game_index == total_items - 1)
   {
-    screen_index = 0;
+    game_index = 0;
   }
   else
   {
-    screen_index++;
+    game_index++;
   }
   setup_game_list_screen();
 }
@@ -227,13 +265,13 @@ void seed_eeprom()
 
   i1.card_amount = 2;
   i1.is_table = false;
-  
+
   i2.card_amount = 3;
   i2.is_table = true;
-  
+
   i3.card_amount = 1;
   i3.is_table = true;
-    
+
   i4.card_amount = 1;
   i4.is_table = true;
 
@@ -291,10 +329,10 @@ void setup_game_list_screen()
   tela.setTextSize(4);
   tela.print("DEALER");
 
-  Game cur_game = game_list.get(screen_index);
+  Game current_game = game_list.get(game_index);
 
   // game click button
-  detail_button.init(&tela, &touch, 120, 130, 200, 100, TFT_WHITE, TFT_GREEN, TFT_BLACK, cur_game.name, 2);
+  detail_button.init(&tela, &touch, 120, 130, 200, 100, TFT_WHITE, TFT_GREEN, TFT_BLACK, current_game.name, 2);
   detail_button.setPressHandler(setup_game_detail_screen);
 
   // go foward button
@@ -312,16 +350,16 @@ void setup_game_detail_screen()
   game_playing_page = false;
   game_over_page = false;
 
-  Game cur_game = game_list.get(screen_index);
-  players_count = cur_game.min_players;
+  Game current_game = game_list.get(game_index);
+  total_players = current_game.min_players;
 
   tela.setCursor(10, 10);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(4);
-  tela.print(cur_game.name);
+  tela.print(current_game.name);
 
-  String max_message = "Maximo: " + String(cur_game.max_players);
-  String min_message = "Minimo: " + String(cur_game.min_players);
+  String max_message = "Maximo: " + String(current_game.max_players);
+  String min_message = "Minimo: " + String(current_game.min_players);
 
   tela.setCursor(10, 60);
   tela.setTextColor(TFT_WHITE);
@@ -352,14 +390,14 @@ void setup_config_game_screen()
   game_playing_page = false;
   game_over_page = false;
 
-  Game cur_game = game_list.get(screen_index);
+  Game current_game = game_list.get(game_index);
 
-  String players_count_message = "Jogadores: " + String(players_count);
+  String players_count_message = "Jogadores: " + String(total_players);
 
   tela.setCursor(10, 10);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(4);
-  tela.print(cur_game.name);
+  tela.print(current_game.name);
 
   tela.setCursor(10, 60);
   tela.setTextColor(TFT_WHITE);
@@ -393,12 +431,12 @@ void setup_is_playing_screen()
   game_playing_page = true;
   game_over_page = false;
 
-  Game cur_game = game_list.get(screen_index);
+  Game current_game = game_list.get(game_index);
 
   tela.setCursor(10, 10);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(4);
-  tela.print(cur_game.name);
+  tela.print(current_game.name);
 
   String turn_message = "Rodada: " + String(instruction_index);
 
@@ -424,16 +462,10 @@ void setup_game_over_screen()
   game_playing_page = false;
   game_over_page = true;
 
-  Game cur_game = game_list.get(screen_index);
-
   tela.setCursor(10, 10);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(4);
   tela.print("Game over");
-
-  instruction_index = 0;
-  player_to_distribute_index = 0;
-  player_to_distribute_cards_count = 0;
 
   // distribute next cards button
   play_button.init(&tela, &touch, 120, 250, 200, 100, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Replay", 2);
@@ -501,11 +533,14 @@ void loop()
   }
 
   // Read card allowed response
-  if (Serial.available() > 0) {
+  if (Serial.available() > 0)
+  {
     String texto = Serial.readStringUntil('\n');
     texto.trim();
-    if (texto.length() > 0) {
-      if (texto.startsWith(CARD_ALLOWED_RESPONSE)) {
+    if (texto.length() > 0)
+    {
+      if (texto.startsWith(CARD_ALLOWED_RESPONSE))
+      {
         String card_allowed_value = extract_after_space(texto);
         card_allowed_value.toUpperCase();
         bool should_distribute = card_allowed_value.startsWith(CARD_ALLOWED_RESPONSE_VALUE_TRUE);
@@ -513,9 +548,4 @@ void loop()
       }
     }
   }
-}
-
-void clean_pos(int x1, int y1, int x2, int y2)
-{
-  tela.fillRect(x1, x2, y1, y2, TFT_BLACK);
 }
