@@ -24,6 +24,10 @@ struct Game
 
 LinkedList<Game> game_list;
 
+LinkedList<Game> game_list_to_save;
+Game current_game_to_save;
+short current_game_to_save_instruction_count = 0;
+
 MCUFRIEND_kbv tela;
 TouchScreen touch(6, A1, A2, 7, 300);
 
@@ -48,6 +52,40 @@ bool is_distributing = false;
 // page current_page = GAME_LIST;
 
 // HELPER FUNCTIONS
+
+void extract_excluded(const String& message, short output[], int& total_cards) {
+  const int max_size = 52;
+  total_cards = 0;
+  int startIndex = 0;
+  int endIndex = 0;
+
+  // Skip the first word (assumed to be "excludedCards")
+  endIndex = message.indexOf(' ', startIndex);
+  startIndex = endIndex + 1;
+
+  while (startIndex < message.length() && total_cards < max_size) {
+    endIndex = message.indexOf(' ', startIndex);
+    if (endIndex == -1) {
+      endIndex = message.length();
+    }
+
+    String numberStr = message.substring(startIndex, endIndex);
+    short number = numberStr.toInt();
+    output[total_cards++] = number;
+
+    startIndex = endIndex + 1;
+  }
+}
+
+String extract_before_space(String texto) {
+  int spaceIndex = texto.indexOf(' ');
+  if (spaceIndex != -1) {
+    String value = texto.substring(0, spaceIndex);
+    return value;
+  } else {
+    return texto;
+  }
+}
 
 void clean()
 {
@@ -88,11 +126,11 @@ bool is_current_instruction_the_last() {
 
 void update_instruction()
 {
-  tela.fillRect(130, 50, 100, 40, TFT_BLACK);
+  tela.fillRect(130, 80, 100, 40, TFT_BLACK);
 
   String turn_message = "Distribuicao: " + String(instruction_index + 1);
 
-  tela.setCursor(10, 50);
+  tela.setCursor(10, 80);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(2);
   tela.print(turn_message);
@@ -191,11 +229,6 @@ void send_excluded_cards()
 {
   Game current_game = game_list.get(game_index);
   String excluded_cards_message = "EXCLUDED_CARDS";
-
-  if (current_game.total_excluded_cards == 0)
-  {
-    return;
-  }
 
   for (int i = 0; i < current_game.total_excluded_cards; i++)
   {
@@ -371,14 +404,14 @@ void setup_game_detail_screen()
   String max_message = "Maximo: " + String(current_game.max_players);
   String min_message = "Minimo: " + String(current_game.min_players);
 
-  tela.setCursor(10, 60);
+  tela.setCursor(10, 80);
   tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
+  tela.setTextSize(2);
   tela.print(min_message);
 
   tela.setCursor(10, 110);
   tela.setTextColor(TFT_WHITE);
-  tela.setTextSize(4);
+  tela.setTextSize(2);
   tela.print(max_message);
 
   // go foward button
@@ -450,7 +483,7 @@ void setup_is_playing_screen()
 
   String turn_message = "Distribuicao: " + String(instruction_index + 1);
 
-  tela.setCursor(10, 50);
+  tela.setCursor(10, 80);
   tela.setTextColor(TFT_WHITE);
   tela.setTextSize(2);
   tela.print(turn_message);
@@ -478,8 +511,12 @@ void setup_game_over_screen()
   tela.print("Game over");
 
   // distribute next cards button
-  play_button.init(&tela, &touch, 120, 250, 200, 100, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Replay", 2);
+  play_button.init(&tela, &touch, 170, 250, 100, 80, TFT_WHITE, TFT_GREEN, TFT_BLACK, "Replay", 2);
   play_button.setPressHandler(setup_is_playing_screen);
+
+  // go foward button
+  back_button.init(&tela, &touch, 60, 250, 100, 80, TFT_WHITE, TFT_RED, TFT_WHITE, "Sair", 2);
+  back_button.setPressHandler(setup_game_list_screen);
 }
 
 void setup()
@@ -487,7 +524,7 @@ void setup()
   Serial.begin(9600);
 
   // Uncomment bellow to seed eeprom (udate seed_eeprom func with your custom games)
-  seed_eeprom();
+  // seed_eeprom();
 
   // Read from EEPROM
   EEPROM.get(0, total_items);
@@ -538,6 +575,7 @@ void loop()
   else if (game_over_page)
   { // Game over page
     play_button.process();
+    back_button.process();
   }
   else
   {
@@ -547,16 +585,72 @@ void loop()
   // Read card allowed response
   if (Serial.available() > 0)
   {
-    String texto = Serial.readStringUntil('\n');
-    texto.trim();
-    if (texto.length() > 0)
+    String message = Serial.readStringUntil('\n');
+    message.trim();
+    if (message.length() > 0)
     {
-      if (texto.startsWith(CARD_ALLOWED_RESPONSE))
+      if (message.startsWith(CARD_ALLOWED_RESPONSE))
       {
-        String card_allowed_value = extract_after_space(texto);
+        String card_allowed_value = extract_after_space(message);
         card_allowed_value.toUpperCase();
         bool should_distribute = card_allowed_value.startsWith(CARD_ALLOWED_RESPONSE_VALUE_TRUE);
         distribute_card(should_distribute);
+      }
+
+      if (message.startsWith("reset")) {
+        game_list.clear();
+        EEPROM.put(0, 0);
+        Serial.println("ACK");
+      }
+
+      if (message.startsWith("name")) {
+        String name_value = extract_after_space(message);
+        name_value.toCharArray(current_game_to_save.name, 20);
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("minPlayers")) {
+        current_game_to_save.min_players = (short)extract_after_space(message).toInt();
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("maxPlayers")) {
+        current_game_to_save.max_players = (short)extract_after_space(message).toInt();
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("players")) {
+        current_game_to_save.instructions[current_game_to_save_instruction_count].is_table = false;
+        current_game_to_save.instructions[current_game_to_save_instruction_count].card_amount = (short)extract_after_space(message).toInt();
+        current_game_to_save_instruction_count++;
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("table")) { 
+        current_game_to_save.instructions[current_game_to_save_instruction_count].is_table = true;
+        current_game_to_save.instructions[current_game_to_save_instruction_count].card_amount = (short)extract_after_space(message).toInt();
+        current_game_to_save_instruction_count++;
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("excludedCards")) {
+        short excluded_cards[52];
+        int total_excluded_cards;
+        extract_excluded(message, excluded_cards, total_excluded_cards);
+        for (int i = 0; i < total_excluded_cards; i++) {
+          current_game_to_save.excluded_cards[i] = excluded_cards[i];
+        }
+        current_game_to_save.total_excluded_cards = total_excluded_cards;
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("endgame")) {
+        current_game_to_save.total_instructions = current_game_to_save_instruction_count;
+        current_game_to_save_instruction_count = 0;
+        game_list_to_save.add(current_game_to_save);
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("cambiodesligo")) {
+        short total_seed_items = game_list_to_save.size();
+        EEPROM.put(0, total_seed_items);
+        for (int i = 0; i < total_seed_items; i++) {
+          EEPROM.put(sizeof(total_seed_items) + (sizeof(Game) * i), game_list_to_save.get(i));
+        }
+        Serial.println("ACK");
       }
     }
   }
