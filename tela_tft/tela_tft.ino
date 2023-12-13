@@ -49,7 +49,6 @@ String CARD_ALLOWED_RESPONSE_VALUE_TRUE = "TRUE";
 String DISCARD_EVENT_MESSAGE = "cospe";
 String CARD_ALLOWED_REQUEST_MESSAGE = "CARD_ALLOWED_REQUEST";
 String DISTRIBUTE_TABLE_MESSAGE = "DISTRIBUTE TABLE";
-String DISTRIBUTE_PLAYER_MESSAGE = "DISTRIBUTE " + String(current_player_index);
 
 bool is_distributing = false;
 
@@ -191,6 +190,7 @@ void distribute_card(bool should_distribute)
   if (!should_distribute)
   {
     Serial.println(DISCARD_EVENT_MESSAGE);
+    check_card_allowed();
     return;
   }
 
@@ -214,7 +214,9 @@ void distribute_card(bool should_distribute)
   }
   else // Distribute to player
   {
-    Serial.println(DISTRIBUTE_PLAYER_MESSAGE);
+    String distribute_player_message = "DISTRIBUTE " + String(current_player_index);
+
+    Serial.println(distribute_player_message);
 
     current_player_cards_received++;
 
@@ -602,7 +604,7 @@ void loop()
     {
 
       // Handle card recognition event consumer
-      if (message.startsWith(CARD_ALLOWED_RESPONSE))
+      if (message.startsWith(CARD_ALLOWED_RESPONSE) && is_distributing)
       {
         String card_allowed_value = extract_after_space(message);
         card_allowed_value.toUpperCase();
