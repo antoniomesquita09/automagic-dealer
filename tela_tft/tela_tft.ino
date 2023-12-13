@@ -119,8 +119,9 @@ String extract_after_space(String texto)
 }
 
 void update_distribution_message() {
-  tela.fillRect(10, 120, 100, 40, TFT_BLACK);
+  tela.fillRect(10, 120, 300, 40, TFT_BLACK);
 
+  Game current_game = game_list.get(game_index);
   Instruction current_instruction = current_game.instructions[instruction_index];
 
   String current_distribution_message = "Para ";
@@ -185,6 +186,7 @@ void next_instruction()
   {
     instruction_index++;
     update_instruction();
+    update_distribution_message();
   }
 }
 
@@ -249,6 +251,7 @@ void distribute_card(bool should_distribute)
       current_player_index++;
       current_player_cards_received = 0;
       check_card_allowed();
+      update_distribution_message();
     }
     else // Current player should receive one more card
     {
