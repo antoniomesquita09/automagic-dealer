@@ -23,6 +23,8 @@ struct Game
 };
 
 LinkedList<Game> game_list;
+Game current_game_to_save;
+short current_game_to_save_instruction_count = 0;
 
 MCUFRIEND_kbv tela;
 TouchScreen touch(6, A1, A2, 7, 300);
@@ -48,6 +50,40 @@ bool is_distributing = false;
 // page current_page = GAME_LIST;
 
 // HELPER FUNCTIONS
+
+void extract_excluded(const String& message, short output[], int& total_cards) {
+  const int max_size = 52;
+  total_cards = 0;
+  int startIndex = 0;
+  int endIndex = 0;
+
+  // Skip the first word (assumed to be "excludedCards")
+  endIndex = message.indexOf(' ', startIndex);
+  startIndex = endIndex + 1;
+
+  while (startIndex < message.length() && total_cards < max_size) {
+    endIndex = message.indexOf(' ', startIndex);
+    if (endIndex == -1) {
+      endIndex = message.length();
+    }
+
+    String numberStr = message.substring(startIndex, endIndex);
+    short number = numberStr.toInt();
+    output[total_cards++] = number;
+
+    startIndex = endIndex + 1;
+  }
+}
+
+String extract_before_space(String texto) {
+  int spaceIndex = texto.indexOf(' ');
+  if (spaceIndex != -1) {
+    String value = texto.substring(0, spaceIndex);
+    return value;
+  } else {
+    return texto;
+  }
+}
 
 void clean()
 {
@@ -487,7 +523,7 @@ void setup()
   Serial.begin(9600);
 
   // Uncomment bellow to seed eeprom (udate seed_eeprom func with your custom games)
-  seed_eeprom();
+  // seed_eeprom();
 
   // Read from EEPROM
   EEPROM.get(0, total_items);
@@ -547,16 +583,70 @@ void loop()
   // Read card allowed response
   if (Serial.available() > 0)
   {
-    String texto = Serial.readStringUntil('\n');
-    texto.trim();
-    if (texto.length() > 0)
+    String message = Serial.readStringUntil('\n');
+    message.trim();
+    if (message.length() > 0)
     {
-      if (texto.startsWith(CARD_ALLOWED_RESPONSE))
+      if (message.startsWith(CARD_ALLOWED_RESPONSE))
       {
-        String card_allowed_value = extract_after_space(texto);
+        String card_allowed_value = extract_after_space(message);
         card_allowed_value.toUpperCase();
         bool should_distribute = card_allowed_value.startsWith(CARD_ALLOWED_RESPONSE_VALUE_TRUE);
         distribute_card(should_distribute);
+      }
+
+      if (message.startsWith("reset")) {
+        game_list.clear();
+        EEPROM.put(0, 0);
+        Serial.println("ACK");
+      }
+
+      if (message.startsWith("name")) {
+        String name_value = extract_after_space(message);
+        name_value.toCharArray(current_game_to_save.name, 20);
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("minPlayers")) {
+        current_game_to_save.min_players = (short)extract_after_space(message).toInt();
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("maxPlayers")) {
+        current_game_to_save.max_players = (short)extract_after_space(message).toInt();
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("player")) {
+        current_game_to_save.instructions[current_game_to_save_instruction_count].is_table = false;
+        current_game_to_save.instructions[current_game_to_save_instruction_count].card_amount = (short)extract_after_space(message).toInt();
+        current_game_to_save_instruction_count++;
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("table")) { 
+        current_game_to_save.instructions[current_game_to_save_instruction_count].is_table = true;
+        current_game_to_save.instructions[current_game_to_save_instruction_count].card_amount = (short)extract_after_space(message).toInt();
+        current_game_to_save_instruction_count++;
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("excludedCards")) {
+        short excluded_cards[52];
+        int total_excluded_cards;
+        extract_excluded(message, excluded_cards, total_excluded_cards);
+        for (int i = 0; i < total_excluded_cards; i++) {
+          current_game_to_save.excluded_cards[i] = excluded_cards[i];
+        }
+        current_game_to_save.total_excluded_cards = total_excluded_cards;
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("endgame")) {
+        game_list.add(current_game_to_save);
+        Serial.println("ACK");
+      }
+      else if (message.startsWith("cambiodesligo")) {
+        short total_seed_items = game_list.size();
+        EEPROM.put(0, total_seed_items);
+        for (int i = 0; i < total_seed_items; i++) {
+          EEPROM.put(sizeof(total_seed_items) + (sizeof(Game) * i), game_list.get(i));
+        }
+        Serial.println("ACK");
       }
     }
   }
