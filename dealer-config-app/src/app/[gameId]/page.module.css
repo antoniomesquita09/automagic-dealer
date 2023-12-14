@@ -1,0 +1,152 @@
+.main {
+  padding: 3rem 0;
+  margin: 0 auto;
+  max-width: 800px;
+  min-height: 100vh;
+  position: relative;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.back {
+}
+
+.title {
+  text-align: center;
+  margin: 40px 0;
+}
+
+.content {
+  padding: 0 50px;
+}
+
+.form {
+}
+
+.top {
+  display: flex;
+  gap: 40px;
+}
+
+.buttonContainer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 36px;
+}
+
+.card {
+  width: 100%;
+  height: 100px;
+  padding: 0 20px;
+  margin-top: 36px;
+  border: 1px solid #ccc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out;
+  border-radius: 8px;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.cardInfo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.deleteGame {
+  border-radius: 50%;
+  width: 40px;
+  height: 41px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.deleteCard {
+  border-radius: 50%;
+  width: 40px;
+  height: 41px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deleteCard:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.add {
+  border-style: dashed;
+  border-color: #999;
+  color: #222222;
+  font-size: 30px;
+  justify-content: center;
+}
+
+.type {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.amount {
+  margin-top: 25px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.cardSelection {
+  display: flex;
+  flex-direction: column;
+  margin-top: 36px;
+  gap: 8px;
+}
+
+.cardRow {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.cardButton {
+  height: 40px;
+  width: 40px;
+  color: black;
+  background-color: white;
+  margin-right: 16px;
+  font-size: 20px;
+  border: 1px solid black;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  place-items: center;
+  justify-content: center;
+  gap: 1px;
+  position: relative;
+}
+
+.excluded {
+  display: none;
+  position: absolute;
+  font-size: 30px;
+}
+
+.active {
+  display: block;
+}
